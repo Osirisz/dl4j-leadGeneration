@@ -14,6 +14,7 @@ import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
+import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -25,21 +26,21 @@ import org.nd4j.linalg.lossfunctions.LossFunctions;
 
 import java.io.IOException;
 
-public class IrisClassifier {
+public class LeadGeneration {
 
     // parameters of the Iris dataset
-    private static final int nClasses = 3;
-    private static final int nFeatures = 4;
-    private static final int nInstances = 150;
-    
+    private static final int nClasses = 4;
+    private static final int nFeatures = 5;
+    private static final int nInstances = 287742;
+
     // hyper-parameters for training
     private static final int seed = 123;
-    private static final double learningRate = 0.01;
+    private static final double learningRate = 1;
     private static final int nEpochs = 5;
 
     // network architecture
-    private static final int nHiddenNodes_1 = 3;  //จำนวนhidden node
-    private static final int nHiddenNodes_2 = 3;
+    private static final int nHiddenNodes_1 = 30;  //จำนวนhidden node
+    private static final int nHiddenNodes_2 = 30;
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
@@ -47,12 +48,12 @@ public class IrisClassifier {
 
         // load data from resource file into a DataSet object
         try (RecordReader recordReader = new CSVRecordReader(0,',')) {
-            recordReader.initialize(new FileSplit(new ClassPathResource("iris.txt").getFile()));
+            recordReader.initialize(new FileSplit(new ClassPathResource("lead_genFormat.csv").getFile()));
 
-            DataSetIterator iterator = new RecordReaderDataSetIterator(recordReader, 
-                                                                       nInstances, /*read all instances*/ 
-                                                                       nFeatures,  /*index of class label*/
-                                                                       nClasses);
+            DataSetIterator iterator = new RecordReaderDataSetIterator(recordReader,
+                    nInstances, /*read all instances*/
+                    nFeatures,  /*index of class label*/
+                    nClasses);
             allData = iterator.next();
         }
 
@@ -69,10 +70,10 @@ public class IrisClassifier {
 
         // design neural network architecture
         MultiLayerConfiguration netConfig = new NeuralNetConfiguration.Builder()
-            .seed(seed) //จุดที่จะให้เริ่มshuffle
-            .iterations(1000)
-            .learningRate(learningRate)
-            .list()
+                .seed(seed) //จุดที่จะให้เริ่มshuffle
+                .iterations(1000)
+                .learningRate(learningRate)
+                .list()
             .layer(0, new DenseLayer.Builder()  //layerที่ใช้hiddenNode   layer0,1คือจน.layerภายในNN
                             .nIn(nFeatures) //input
                             .nOut(nHiddenNodes_1) //outputออก
@@ -90,10 +91,22 @@ public class IrisClassifier {
                             .build())
             .pretrain(false).backprop(true).build();
 
+//                .layer(0, new DenseLayer.Builder()
+//                        .nIn(nFeatures)
+//                        .nOut(nHiddenNodes_1)
+//                        .activation(Activation.RELU)
+//                        .build())
+//                .layer(1, new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+//                        .nIn(nHiddenNodes_1)
+//                        .nOut(nClasses)
+//                        .activation(Activation.SOFTMAX)
+//                        .build())
+//                .pretrain(false).backprop(true).build();
+
         // initialize the neural net
         MultiLayerNetwork model = new MultiLayerNetwork(netConfig);
         model.init();
-
+        model.setListeners(new ScoreIterationListener(10));
         // train!
         for (int i = 0; i < nEpochs; i++) {
             System.out.println("Training epoch " + (i+1) + "/" + nEpochs);
